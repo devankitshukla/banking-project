@@ -1,0 +1,8 @@
+# Secret keys — NEVER upload these to GitHub
+.env
+
+# Auto-generated files
+bank_data.json
+__pycache__/
+*.pyc
+*.pyo

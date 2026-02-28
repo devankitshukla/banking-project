@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Banking Dashboard — Devankit Shukla</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:       #080c10;
+    --surface:  #0e1318;
+    --border:   rgba(255,255,255,0.07);
+    --text:     #e8edf2;
+    --muted:    rgba(232,237,242,0.4);
+    --green:    #00e5a0;
+    --red:      #ff4d6d;
+    --blue:     #3b9eff;
+    --gold:     #ffc247;
+    --violet:   #a78bfa;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── BG grid ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  /* ── Layout ── */
+  .shell { position: relative; z-index: 1; display: flex; min-height: 100vh; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 260px; flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 28px 0;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  }
+  .logo {
+    padding: 0 24px 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .logo-tag { font-size: 10px; letter-spacing: .18em; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+  .logo-title { font-family: var(--font-head); font-size: 20px; font-weight: 800; color: var(--text); }
+  .logo-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .nav-label { font-size: 10px; letter-spacing: .14em; color: var(--muted); text-transform: uppercase; padding: 0 24px; margin-bottom: 8px; margin-top: 16px; }
+  .nav-btn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 24px; cursor: pointer; font-family: var(--font-mono);
+    font-size: 13px; color: var(--muted); border: none; background: none;
+    width: 100%; text-align: left; transition: all .15s;
+    border-left: 2px solid transparent;
+  }
+  .nav-btn:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  .nav-btn.active { color: var(--green); border-left-color: var(--green); background: rgba(0,229,160,0.06); }
+  .nav-btn .icon { font-size: 15px; width: 18px; text-align: center; }
+
+  /* Account list in sidebar */
+  .acct-list { padding: 0 12px; flex: 1; overflow-y: auto; }
+  .acct-chip {
+    padding: 10px 12px; border-radius: 10px; cursor: pointer;
+    margin-bottom: 4px; transition: all .15s; border: 1px solid transparent;
+  }
+  .acct-chip:hover { background: rgba(255,255,255,0.04); }
+  .acct-chip.active { background: rgba(0,229,160,0.07); border-color: rgba(0,229,160,0.2); }
+  .acct-chip-name { font-size: 13px; font-weight: 700; color: var(--text); }
+  .acct-chip-bal  { font-size: 11px; color: var(--green); margin-top: 2px; }
+  .acct-chip-type { font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+  /* ── Main ── */
+  .main { flex: 1; padding: 32px 36px; overflow-y: auto; }
+
+  /* ── Panels (views) ── */
+  .panel { display: none; animation: fadeUp .3s ease; }
+  .panel.active { display: block; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+  /* ── Page header ── */
+  .page-hdr { margin-bottom: 28px; }
+  .page-hdr h1 { font-family: var(--font-head); font-size: 28px; font-weight: 800; }
+  .page-hdr p  { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  /* ── Stats row ── */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px;
+    position: relative; overflow: hidden;
+  }
+  .stat-card::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--accent, var(--green));
+  }
+  .stat-label { font-size: 11px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px; }
+  .stat-value { font-family: var(--font-head); font-size: 26px; font-weight: 800; color: var(--text); }
+  .stat-sub   { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px; margin-bottom: 20px;
+  }
+  .card-title { font-family: var(--font-head); font-size: 15px; font-weight: 700; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+
+  /* ── Account grid ── */
+  .acct-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .acct-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 22px; cursor: pointer;
+    transition: all .2s; position: relative; overflow: hidden;
+  }
+  .acct-card:hover { border-color: rgba(255,255,255,0.15); transform: translateY(-2px); }
+  .acct-card.selected { border-color: var(--green); box-shadow: 0 0 0 1px rgba(0,229,160,0.2); }
+  .acct-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .acct-card-name { font-family: var(--font-head); font-size: 17px; font-weight: 700; }
+  .acct-card-num  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .acct-card-bal  { font-family: var(--font-head); font-size: 28px; font-weight: 800; margin-bottom: 10px; }
+  .acct-card-meta { display: flex; gap: 12px; font-size: 11px; color: var(--muted); }
+  .type-badge {
+    font-size: 10px; padding: 3px 8px; border-radius: 20px; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase;
+  }
+  .type-BankAccount          { background: rgba(59,158,255,.15); color: #3b9eff; }
+  .type-SavingAccount        { background: rgba(0,229,160,.15);  color: #00e5a0; }
+  .type-InterestRewardAccount{ background: rgba(255,194,71,.15); color: #ffc247; }
+  .type-JointAccount         { background: rgba(167,139,250,.15);color: #a78bfa; }
+  .type-FixedDepositAccount  { background: rgba(255,77,109,.15); color: #ff4d6d; }
+
+  /* ── Action buttons ── */
+  .btn-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+  .btn {
+    padding: 10px 20px; border-radius: 10px; border: none; cursor: pointer;
+    font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+    transition: all .15s; letter-spacing: .04em;
+  }
+  .btn-green  { background: rgba(0,229,160,.15);  color: var(--green);  border: 1px solid rgba(0,229,160,.25); }
+  .btn-red    { background: rgba(255,77,109,.15);  color: var(--red);    border: 1px solid rgba(255,77,109,.25); }
+  .btn-blue   { background: rgba(59,158,255,.15);  color: var(--blue);   border: 1px solid rgba(59,158,255,.25); }
+  .btn-gold   { background: rgba(255,194,71,.15);  color: var(--gold);   border: 1px solid rgba(255,194,71,.25); }
+  .btn-violet { background: rgba(167,139,250,.15); color: var(--violet); border: 1px solid rgba(167,139,250,.25); }
+  .btn-solid  { background: var(--green); color: #000; }
+  .btn:hover  { filter: brightness(1.2); transform: translateY(-1px); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+  /* ── Form ── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 11px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+  input, select {
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    border-radius: 9px; padding: 10px 14px; color: var(--text);
+    font-family: var(--font-mono); font-size: 13px; outline: none;
+    transition: border-color .15s;
+  }
+  input:focus, select:focus { border-color: rgba(0,229,160,0.4); }
+  select option { background: #1a1f26; }
+
+  /* ── Transaction table ── */
+  .tx-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .tx-table th { text-align: left; padding: 8px 12px; color: var(--muted); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  .tx-table td { padding: 11px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .tx-table tr:last-child td { border-bottom: none; }
+  .tx-credit { color: var(--green); }
+  .tx-debit  { color: var(--red);   }
+
+  /* ── AI panel ── */
+  .ai-output {
+    background: rgba(0,229,160,.04); border: 1px solid rgba(0,229,160,.15);
+    border-radius: 12px; padding: 20px; min-height: 80px;
+    font-size: 14px; line-height: 1.8; color: var(--text);
+    white-space: pre-wrap; font-family: 'Georgia', serif;
+  }
+  .ai-output .placeholder { color: var(--muted); font-family: var(--font-mono); font-size: 12px; font-style: italic; }
+  .cursor { display: inline-block; width: 8px; height: 16px; background: var(--green); animation: blink .7s infinite; vertical-align: middle; margin-left: 2px; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,.7); backdrop-filter: blur(8px);
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid rgba(255,255,255,.12);
+    border-radius: 20px; padding: 28px; width: 440px; max-width: 95vw;
+    animation: fadeUp .25s ease;
+  }
+  .modal-title { font-family: var(--font-head); font-size: 18px; font-weight: 800; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+  .modal-close { background: none; border: none; color: var(--muted); font-size: 22px; cursor: pointer; line-height: 1; }
+  .modal-close:hover { color: var(--text); }
+  .modal-footer { margin-top: 20px; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 28px; right: 28px; z-index: 200;
+    padding: 12px 20px; border-radius: 12px; font-size: 13px; font-weight: 700;
+    opacity: 0; transform: translateY(10px);
+    transition: all .25s; pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: none; }
+  #toast.success { background: rgba(0,229,160,.9); color: #000; }
+  #toast.error   { background: rgba(255,77,109,.9); color: #fff; }
+
+  /* ── Spinner ── */
+  .spin {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid rgba(0,229,160,.3); border-top-color: var(--green);
+    border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Responsive */
+  @media(max-width:900px){
+    .sidebar{ display: none; }
+    .stats-row{ grid-template-columns: 1fr 1fr; }
+    .form-grid{ grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-tag">Devankit Shukla</div>
+      <div class="logo-title">Account Analysis</div>
+      <div class="logo-sub">A.I. Integrated Analysis
+    </div>
+
+    <div class="nav-label">Navigation</div>
+    <button class="nav-btn active" onclick="showPanel('dashboard')" id="nav-dashboard">
+      <span class="icon">📊</span> Dashboard
+    </button>
+    <button class="nav-btn" onclick="showPanel('accounts')" id="nav-accounts">
+      <span class="icon">🏦</span> Accounts
+    </button>
+    <button class="nav-btn" onclick="showPanel('ai')" id="nav-ai">
+      <span class="icon">🤖</span> AI Advisor
+    </button>
+
+    <div class="nav-label" style="margin-top:24px;">Your Accounts</div>
+    <div class="acct-list" id="sidebar-accounts"></div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main class="main">
+
+    <!-- DASHBOARD panel -->
+    <div class="panel active" id="panel-dashboard">
+      <div class="page-hdr">
+        <h1>Dashboard</h1>
+        <p>Overview of all accounts and activity</p>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card" style="--accent:#00e5a0">
+          <div class="stat-label">Total Assets</div>
+          <div class="stat-value" id="stat-total">$0</div>
+          <div class="stat-sub" id="stat-accounts">0 accounts</div>
+        </div>
+        <div class="stat-card" style="--accent:#3b9eff">
+          <div class="stat-label">Total Deposits</div>
+          <div class="stat-value" id="stat-deposits">$0</div>
+          <div class="stat-sub">all time</div>
+        </div>
+        <div class="stat-card" style="--accent:#ff4d6d">
+          <div class="stat-label">Total Withdrawn</div>
+          <div class="stat-value" id="stat-withdrawn">$0</div>
+          <div class="stat-sub">all time</div>
+        </div>
+        <div class="stat-card" style="--accent:#ffc247">
+          <div class="stat-label">Transactions</div>
+          <div class="stat-value" id="stat-txns">0</div>
+          <div class="stat-sub">total operations</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🏦 All Accounts</div>
+        <div class="acct-grid" id="dashboard-accounts"></div>
+        <div id="no-accounts" style="color:var(--muted);font-size:13px;display:none;">
+          No accounts yet. Go to Accounts → Create New Account.
+        </div>
+      </div>
+    </div>
+
+    <!-- ACCOUNTS panel -->
+    <div class="panel" id="panel-accounts">
+      <div class="page-hdr">
+        <h1>Accounts</h1>
+        <p>Manage accounts, transactions and history</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">➕ Create New Account</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Account Holder Name</label>
+            <input id="new-name" type="text" placeholder="e.g. Devankit"/>
+          </div>
+          <div class="form-group">
+            <label>Initial Deposit (₹)</label>
+            <input id="new-amount" type="number" placeholder="5000" min="0"/>
+          </div>
+          <div class="form-group">
+            <label>Location</label>
+            <input id="new-location" type="text" placeholder="e.g. Ahmedabad"/>
+          </div>
+          <div class="form-group">
+            <label>Account Type</label>
+            <select id="new-type">
+              <option value="BankAccount">Standard</option>
+              <option value="SavingAccount">Savings (3% interest, ₹5 fee)</option>
+              <option value="InterestRewardAccount">Interest Reward (+5% on deposits)</option>
+              <option value="JointAccount">Joint Account</option>
+              <option value="FixedDepositAccount">Fixed Deposit</option>
+            </select>
+          </div>
+          <div class="form-group full" id="owners-group" style="display:none;">
+            <label>Joint Owners (comma separated)</label>
+            <input id="new-owners" type="text" placeholder="Shruti, Devankit"/>
+          </div>
+        </div>
+        <div style="margin-top:16px;">
+          <button class="btn btn-solid" onclick="createAccount()">Create Account</button>
+        </div>
+      </div>
+
+      <!-- Selected account detail -->
+      <div id="acct-detail" style="display:none;">
+        <div class="card">
+          <div class="card-title" id="detail-title">Account Detail</div>
+          <div style="display:flex;gap:32px;flex-wrap:wrap;margin-bottom:20px;">
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Balance</div>
+              <div style="font-family:var(--font-head);font-size:36px;font-weight:800;color:var(--green)" id="detail-balance">$0</div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Account #</div>
+              <div style="font-size:16px;font-weight:700;" id="detail-number">—</div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Location</div>
+              <div style="font-size:16px;" id="detail-location">—</div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Opened</div>
+              <div style="font-size:16px;" id="detail-opened">—</div>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-green"  onclick="openModal('deposit')">↑ Deposit</button>
+            <button class="btn btn-red"    onclick="openModal('withdraw')">↓ Withdraw</button>
+            <button class="btn btn-blue"   onclick="openModal('transfer')">⇄ Transfer</button>
+            <button class="btn btn-gold"   id="btn-interest" onclick="applyInterest()" style="display:none;">💹 Apply Interest</button>
+            <button class="btn btn-violet" onclick="getAIAdvice()">🤖 AI Advice</button>
+          </div>
+
+          <!-- AI output inline -->
+          <div id="inline-ai" style="display:none;margin-bottom:20px;">
+            <div class="card-title">🤖 AI Investment Advice</div>
+            <div class="ai-output" id="inline-ai-text"><span class="placeholder">Fetching advice...</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📜 Transaction History</div>
+          <div style="overflow-x:auto;">
+            <table class="tx-table">
+              <thead>
+                <tr>
+                  <th>Date & Time</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Balance After</th>
+                </tr>
+              </thead>
+              <tbody id="tx-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="no-selection" style="color:var(--muted);font-size:13px;margin-top:8px;">
+        ← Select an account from the sidebar or create a new one above.
+      </div>
+    </div>
+
+    <!-- AI ADVISOR panel -->
+    <div class="panel" id="panel-ai">
+      <div class="page-hdr">
+        <h1>AI Investment Advisor</h1>
+        <p>Powered by Claude — personalised advice for any profile</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <!-- Existing account -->
+        <div class="card">
+          <div class="card-title">🏦 From Existing Account</div>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label>Select Account</label>
+            <select id="ai-account-select">
+              <option value="">Choose an account...</option>
+            </select>
+          </div>
+          <button class="btn btn-solid" onclick="getAIFromAccount()">Get AI Advice</button>
+        </div>
+
+        <!-- Custom person -->
+        <div class="card">
+          <div class="card-title">✏️ Custom Person</div>
+          <div class="form-grid" style="grid-template-columns:1fr;">
+            <div class="form-group">
+              <label>Name</label>
+              <input id="ai-name" type="text" placeholder="e.g. Devankit"/>
+            </div>
+            <div class="form-group">
+              <label>Account Balance (₹)</label>
+              <input id="ai-balance" type="number" placeholder="50000"/>
+            </div>
+            <div class="form-group">
+              <label>Monthly Income (₹)</label>
+              <input id="ai-income" type="number" placeholder="30000"/>
+            </div>
+            <div class="form-group">
+              <label>Monthly Spending (₹)</label>
+              <input id="ai-spent" type="number" placeholder="18000"/>
+            </div>
+          </div>
+          <button class="btn btn-solid" style="margin-top:14px;" onclick="getCustomAI()">Get AI Advice</button>
+        </div>
+      </div>
+
+      <div class="card" id="ai-result-card" style="display:none;">
+        <div class="card-title">🤖 AI Report — <span id="ai-result-name"></span></div>
+        <div class="ai-output" id="ai-result-text"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── MODALS ── -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modal-title-text">Action</span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-solid" id="modal-confirm" onclick="confirmModal()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="toast"></div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let allAccounts = [];
+let selectedAccount = null;
+let currentModal = null;
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  loadAccounts();
+  document.getElementById('new-type').addEventListener('change', function() {
+    document.getElementById('owners-group').style.display =
+      this.value === 'JointAccount' ? 'block' : 'none';
+  });
+});
+
+// ── API helpers ───────────────────────────────────────────────────────────────
+async function api(path, method='GET', body=null) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch('/api' + path, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+// ── Load & Render ─────────────────────────────────────────────────────────────
+async function loadAccounts() {
+  try {
+    allAccounts = await api('/accounts');
+    renderAll();
+  } catch(e) { toast('Failed to load accounts', 'error'); }
+}
+
+function renderAll() {
+  renderSidebar();
+  renderDashboard();
+  renderAISelect();
+  if (selectedAccount) {
+    const updated = allAccounts.find(a => a.name === selectedAccount.name);
+    if (updated) renderDetail(updated);
+  }
+}
+
+function renderSidebar() {
+  const el = document.getElementById('sidebar-accounts');
+  el.innerHTML = allAccounts.map(a => `
+    <div class="acct-chip ${selectedAccount?.name===a.name?'active':''}" onclick="selectAccount('${a.name}')">
+      <div class="acct-chip-name">${a.name}</div>
+      <div class="acct-chip-bal">$${a.balance.toLocaleString('en-US',{minimumFractionDigits:2})}</div>
+      <div class="acct-chip-type">${a.type.replace('Account','')}</div>
+    </div>
+  `).join('');
+}
+
+function renderDashboard() {
+  const total     = allAccounts.reduce((s,a)=>s+a.balance,0);
+  const allTxns   = allAccounts.flatMap(a=>a.transactions);
+  const deposited = allTxns.filter(t=>t.amount>0&&t.type!=='Account Opened').reduce((s,t)=>s+t.amount,0);
+  const withdrawn = allTxns.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0);
+
+  document.getElementById('stat-total').textContent     = '$'+total.toLocaleString('en-US',{minimumFractionDigits:2});
+  document.getElementById('stat-accounts').textContent  = allAccounts.length+' account'+(allAccounts.length!==1?'s':'');
+  document.getElementById('stat-deposits').textContent  = '$'+deposited.toLocaleString('en-US',{minimumFractionDigits:2});
+  document.getElementById('stat-withdrawn').textContent = '$'+withdrawn.toLocaleString('en-US',{minimumFractionDigits:2});
+  document.getElementById('stat-txns').textContent      = allTxns.length;
+
+  const grid = document.getElementById('dashboard-accounts');
+  const none = document.getElementById('no-accounts');
+
+  if (allAccounts.length === 0) { grid.innerHTML=''; none.style.display='block'; return; }
+  none.style.display = 'none';
+  grid.innerHTML = allAccounts.map(a => `
+    <div class="acct-card ${selectedAccount?.name===a.name?'selected':''}" onclick="selectAccount('${a.name}');showPanel('accounts')">
+      <div class="acct-card-top">
+        <div>
+          <div class="acct-card-name">${a.name}</div>
+          <div class="acct-card-num">#${a.account_number} · ${a.location}</div>
+        </div>
+        <span class="type-badge type-${a.type}">${a.type.replace('Account','')}</span>
+      </div>
+      <div class="acct-card-bal">$${a.balance.toLocaleString('en-US',{minimumFractionDigits:2})}</div>
+      <div class="acct-card-meta">
+        <span>📅 ${a.date_opened}</span>
+        <span>📋 ${a.transactions.length} txns</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderAISelect() {
+  const sel = document.getElementById('ai-account-select');
+  sel.innerHTML = '<option value="">Choose an account...</option>' +
+    allAccounts.map(a=>`<option value="${a.name}">${a.name} — $${a.balance.toFixed(2)}</option>`).join('');
+}
+
+function renderDetail(acc) {
+  selectedAccount = acc;
+  document.getElementById('no-selection').style.display = 'none';
+  document.getElementById('acct-detail').style.display  = 'block';
+  document.getElementById('detail-title').innerHTML =
+    `${acc.name} <span class="type-badge type-${acc.type}" style="font-size:11px;">${acc.type.replace('Account','')}</span>`;
+  document.getElementById('detail-balance').textContent  = '$'+acc.balance.toLocaleString('en-US',{minimumFractionDigits:2});
+  document.getElementById('detail-number').textContent   = '#'+acc.account_number;
+  document.getElementById('detail-location').textContent = acc.location;
+  document.getElementById('detail-opened').textContent   = acc.date_opened;
+
+  // Show interest button only for Savings/FD
+  document.getElementById('btn-interest').style.display =
+    ['SavingAccount','FixedDepositAccount'].includes(acc.type) ? 'inline-flex' : 'none';
+
+  // Render transactions newest first
+  const tbody = document.getElementById('tx-body');
+  const txns  = [...acc.transactions].reverse();
+  tbody.innerHTML = txns.map(t => {
+    const isCredit = t.amount >= 0;
+    const sign = isCredit ? '+' : '';
+    return `<tr>
+      <td style="color:var(--muted)">${new Date(t.timestamp).toLocaleString()}</td>
+      <td>${t.type}</td>
+      <td class="${isCredit?'tx-credit':'tx-debit'}">${sign}$${Math.abs(t.amount).toFixed(2)}</td>
+      <td style="color:var(--muted)">$${t.balance_after.toFixed(2)}</td>
+    </tr>`;
+  }).join('');
+
+  // hide AI box on account change
+  document.getElementById('inline-ai').style.display = 'none';
+  renderSidebar();
+  renderDashboard();
+}
+
+function selectAccount(name) {
+  const acc = allAccounts.find(a => a.name === name);
+  if (acc) renderDetail(acc);
+}
+
+// ── Panel nav ─────────────────────────────────────────────────────────────────
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  document.getElementById('nav-'+id).classList.add('active');
+}
+
+// ── Create account ────────────────────────────────────────────────────────────
+async function createAccount() {
+  const name     = document.getElementById('new-name').value.trim();
+  const amount   = parseFloat(document.getElementById('new-amount').value) || 0;
+  const location = document.getElementById('new-location').value.trim();
+  const type     = document.getElementById('new-type').value;
+  const ownersRaw= document.getElementById('new-owners').value;
+  const owners   = ownersRaw.split(',').map(o=>o.trim()).filter(Boolean);
+
+  if (!name || !location) return toast('Name and location are required', 'error');
+
+  try {
+    const acc = await api('/accounts', 'POST', {name, amount, location, type, owners});
+    await loadAccounts();
+    renderDetail(acc);
+    toast(`Account '${name}' created!`, 'success');
+    ['new-name','new-amount','new-location','new-owners'].forEach(id => document.getElementById(id).value='');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Modal system ──────────────────────────────────────────────────────────────
+function openModal(type) {
+  if (!selectedAccount) return toast('Select an account first', 'error');
+  currentModal = type;
+  const titles = { deposit:'↑ Deposit', withdraw:'↓ Withdraw', transfer:'⇄ Transfer' };
+  document.getElementById('modal-title-text').textContent = titles[type] + ' — ' + selectedAccount.name;
+
+  let html = '';
+  if (type === 'deposit' || type === 'withdraw') {
+    const fee = selectedAccount.fee || 0;
+    const note = type==='deposit' && ['InterestRewardAccount','SavingAccount'].includes(selectedAccount.type)
+      ? '<div style="font-size:11px;color:var(--gold);margin-bottom:12px;">⭐ This account earns 5% deposit bonus</div>' : '';
+    const feeNote = type==='withdraw' && fee>0
+      ? `<div style="font-size:11px;color:var(--red);margin-bottom:12px;">⚠️ $${fee} withdrawal fee applies</div>` : '';
+    html = `${note}${feeNote}
+      <div class="form-group">
+        <label>Amount (₹)</label>
+        <input id="modal-amount" type="number" placeholder="Enter amount" min="1" autofocus/>
+      </div>`;
+  } else if (type === 'transfer') {
+    const others = allAccounts.filter(a=>a.name!==selectedAccount.name);
+    if (!others.length) { toast('No other accounts to transfer to', 'error'); return; }
+    html = `
+      <div class="form-group" style="margin-bottom:14px;">
+        <label>Amount (₹)</label>
+        <input id="modal-amount" type="number" placeholder="Enter amount" min="1" autofocus/>
+      </div>
+      <div class="form-group">
+        <label>Transfer To</label>
+        <select id="modal-target">
+          ${others.map(a=>`<option value="${a.name}">${a.name} — $${a.balance.toFixed(2)}</option>`).join('')}
+        </select>
+      </div>`;
+  }
+
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('modal-amount')?.focus(), 100);
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); currentModal=null; }
+function closeModalOutside(e) { if(e.target===document.getElementById('modal-overlay')) closeModal(); }
+
+async function confirmModal() {
+  const amount = parseFloat(document.getElementById('modal-amount')?.value);
+  if (!amount || amount <= 0) return toast('Enter a valid amount', 'error');
+
+  try {
+    let result;
+    if (currentModal === 'deposit') {
+      result = await api(`/accounts/${selectedAccount.name}/deposit`, 'POST', {amount});
+      toast(`Deposited $${amount.toFixed(2)}`, 'success');
+    } else if (currentModal === 'withdraw') {
+      result = await api(`/accounts/${selectedAccount.name}/withdraw`, 'POST', {amount});
+      toast(`Withdrew $${amount.toFixed(2)}`, 'success');
+    } else if (currentModal === 'transfer') {
+      const target = document.getElementById('modal-target').value;
+      result = await api(`/accounts/${selectedAccount.name}/transfer`, 'POST', {amount, target});
+      toast(`Transferred $${amount.toFixed(2)} to ${target}`, 'success');
+      result = result.from;
+    }
+    closeModal();
+    await loadAccounts();
+    renderDetail(result);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Interest ───────────────────────────────────────────────────────────────────
+async function applyInterest() {
+  if (!selectedAccount) return;
+  try {
+    const result = await api(`/accounts/${selectedAccount.name}/interest`, 'POST');
+    await loadAccounts();
+    renderDetail(result);
+    toast('Interest applied!', 'success');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── AI Advice ─────────────────────────────────────────────────────────────────
+async function getAIAdvice() {
+  if (!selectedAccount) return;
+  const box = document.getElementById('inline-ai');
+  const txt = document.getElementById('inline-ai-text');
+  box.style.display = 'block';
+  txt.innerHTML = '<span class="spin"></span> Fetching AI advice...';
+  try {
+    const data = await api(`/accounts/${selectedAccount.name}/ai-advice`);
+    txt.textContent = data.advice;
+  } catch(e) { txt.textContent = '⚠️ ' + e.message; }
+}
+
+async function getAIFromAccount() {
+  const name = document.getElementById('ai-account-select').value;
+  if (!name) return toast('Select an account', 'error');
+  showAIResult(name, null, `/accounts/${name}/ai-advice`, 'GET', null);
+}
+
+async function getCustomAI() {
+  const name     = document.getElementById('ai-name').value.trim() || 'User';
+  const balance  = parseFloat(document.getElementById('ai-balance').value) || 0;
+  const deposited= parseFloat(document.getElementById('ai-income').value) || 0;
+  const spent    = parseFloat(document.getElementById('ai-spent').value) || 0;
+  showAIResult(name, null, '/ai-advice/custom', 'POST', {name, balance, deposited, spent});
+}
+
+async function showAIResult(label, _, path, method, body) {
+  const card = document.getElementById('ai-result-card');
+  const txt  = document.getElementById('ai-result-text');
+  document.getElementById('ai-result-name').textContent = label;
+  card.style.display = 'block';
+  txt.innerHTML = '<span class="spin"></span> Asking Claude AI...';
+  card.scrollIntoView({behavior:'smooth'});
+  try {
+    const data = await api(path, method, body);
+    txt.textContent = data.advice;
+  } catch(e) { txt.textContent = '⚠️ ' + e.message; }
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type='success') {
+  const el = document.getElementById('toast');
+  el.textContent = (type==='success'?'✅ ':'❌ ') + msg;
+  el.className = 'show ' + type;
+  setTimeout(()=>{ el.className=''; }, 3200);
+}
+
+// Enter key in modal
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('modal-overlay').classList.contains('open')) confirmModal();
+  if (e.key === 'Escape') closeModal();
+});
+</script>
+</body>
+</html>
